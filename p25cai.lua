@@ -268,9 +268,10 @@ link_control_opcodes = {
 }
 
 talk_group_ids = {
-  [0x0000] = "No One (used for individual calls)",
-  [0x0001] = "Default Talk Group (used in systems with no other talk groups defined)",
-  [0xFFFF] = "Everyone"
+  {0x0000, 0x0000, "No One (used for individual calls)"},
+  {0x0001, 0x0001, "Default Talk Group (used in systems with no other talk groups defined)"},
+  {0x0002, 0xFFFE, "Regular Talk Group"},
+  {0xFFFF, 0xFFFF, "Everyone"},
 }
 
 key_ids = {
@@ -475,17 +476,21 @@ f.mi             = ProtoField.bytes("p25cai.mi", "Message Indicator (initializat
 f.mfid           = ProtoField.uint8("p25cai.mfid", "Manufacturer's ID", base.HEX, manufacturer_ids)
 f.algid          = ProtoField.uint8("p25cai.algid", "Algorithm ID", base.HEX, algorithm_ids)
 f.kid            = ProtoField.uint16("p25cai.kid", "Key ID", base.HEX, key_ids)
-f.tgid           = ProtoField.uint16("p25cai.tgid", "Talk Group ID", base.HEX, talk_group_ids)
+f.tgid           = ProtoField.uint16("p25cai.tgid", "Talk Group ID", base.RANGE_STRING, talk_group_ids)
 f.ss_parent      = ProtoField.none("p25cai.ss_parent", "Status Symbols", base.NONE)
 f.ss             = ProtoField.uint8("p25cai.ss", "Status Symbol", base.HEX, status_symbols, 0x3)
 f.lc             = ProtoField.none("p25cai.lc", "Link Control", base.NONE)
 f.lcf            = ProtoField.uint8("p25cai.lcf", "Link Control Format", base.HEX, link_control_formats)
 f.lbf            = ProtoField.bool("p25cai.lbf", "Last Block Flag", 8, nil, 0x80) -- 0x80 is binary 10000000 (MSB)
+f.ei             = ProtoField.bool("p25cai.ei", "Emergency Indicator", 8, nil, 0x80)
 f.ptbf           = ProtoField.bool("p25cai.ptbf", "Protected Trunking Block Flag", 8, nil, 0x40) -- 0x40 is binary 01000000 (2nd MSB)
 f.isp_opcode     = ProtoField.uint8("p25cai.isp.opcode", "Opcode", base.HEX, isp_opcodes, 0x3F)
 f.osp_opcode     = ProtoField.uint8("p25cai.osp.opcode", "Opcode", base.HEX, osp_opcodes, 0x3F)
 f.unknown_opcode = ProtoField.uint8("p25cai.unknown.opcode", "Unknown Opcode (non-standard MFID)", base.HEX, nil, 0x3F)
 f.args           = ProtoField.uint64("p25cai.args", "Arguments", base.HEX)
+f.tuid           = ProtoField.uint24("p25cai.tuid", "Target Unit ID")
+f.srcuid         = ProtoField.uint24("p25cai.suid", "Source Unit ID")
+f.dstuid         = ProtoField.uint24("p25cai.suid", "Destination Unit ID")
 f.crc            = ProtoField.uint16("p25cai.crc", "CRC", base.HEX)
 f.imbe           = ProtoField.bytes("p25cai.imbe", "Raw IMBE Frame", base.NONE)
 -- Low Speed Data (LSD) [16 bits, 2 bytes] is used for custom user applications not defined by p25cai (e.g. GPS coordinates).
@@ -496,7 +501,7 @@ f.an             = ProtoField.bool("p25cai.an", "A/N", 8, nil, 0x40)
 f.io             = ProtoField.bool("p25cai.io", "I/O", 8, nil, 0x20)
 f.pdu_format     = ProtoField.uint8("p25cai.pdu.format", "Format", base.HEX, pdu_formats, 0x1F)
 f.sapid          = ProtoField.uint8("p25cai.sapid", "SAP ID", base.HEX, service_access_points, 0x3F)
-f.llid           = ProtoField.uint24("p25cai.llid", "Logical Link ID", base.HEX)
+f.llid           = ProtoField.uint24("p25cai.llid", "Logical Link ID", base.DEC)
 f.fmf            = ProtoField.bool("p25cai.fmf", "Full Message Flag", 8, nil, 0x80)
 f.btf            = ProtoField.uint8("p25cai.btf", "Blocks to Follow", base.DEC, nil, 0x7F)
 f.poc            = ProtoField.uint8("p25cai.poc", "Pad Octet Count", base.HEX, nil, 0x1F)
@@ -674,8 +679,23 @@ end
 
 local function dissect_lc(tvb, tree)
   local lc_tree = tree:add(f.lc, tvb(0, 9))
+  local lcf = tvb(0, 1):uint()
   lc_tree:add(f.lcf, tvb(0, 1))
-  -- TODO: Decode Link Control according to Link Control Format
+
+  if lcf == 0x00 then -- 0x00 = Group Call Format
+    lc_tree:add(f.mfid, tvb(1, 1))
+    lc_tree:add(f.ei, tvb(2,1))
+    lc_tree:add(f.tgid, tvb(4,2))
+    lc_tree:add(f.srcuid, tvb(6,3))
+  elseif lcf == 0x03 then -- 0x03 = Individual Call Format
+    -- TODO: need to test this with a radio which isn't on a trunked system
+    lc_tree:add(f.mfid, tvb(1, 1))
+    lc_tree:add(f.dstuid, tvb(3, 3))
+    lc_tree:add(f.srcuid, tvb(6, 3))
+  -- TODO: implement encryption (if key is known)
+  -- else if lcf == 0x80 -- Encrypted Group Call Format
+  -- else if lcf == 0x83 -- Encrypted Individual Call Format
+  end
 end
 
 local function dissect_es(tvb, tree)
@@ -1052,7 +1072,7 @@ local function build_ldu_lc_tvb(tvb, pinfo, offset)
 
             -- Get 4 bytes as a 32-bit network-order integer
             local uint32 = 0
-            if byte_pos + 3 < tvb:reported_length() then
+            if byte_pos + 3 < tvb:len() then
                 uint32 = tvb:bytes(byte_pos, 4):uint()
             else
                 -- If we don't have 4 bytes, use what we have
@@ -1476,7 +1496,8 @@ local function dissect(tvb, pinfo, tree)
     du_tree:add(f.mfid, hdu_tvb(9, 1))
     du_tree:add(f.algid, hdu_tvb(10, 1))
     du_tree:add(f.kid, hdu_tvb(11, 2))
-    du_tree:add(f.tgid, hdu_tvb(13, 2))
+    local tgid = hdu_tvb(13, 2):uint()
+    du_tree:add(f.tgid, tgid):append_text(string.format(" (0x%04x)", tgid))
 
   elseif duid == 0x3 then
     -- Terminator without Link Control
@@ -1491,6 +1512,7 @@ local function dissect(tvb, pinfo, tree)
     local du_tree = du_item
     dissect_voice(extracted_tvb, du_tree, offset)
 
+    -- Link Control (LC) Word
     local lc_tvb = build_ldu_lc_tvb(extracted_tvb, pinfo, offset)
     dissect_lc(lc_tvb, du_tree)
 
@@ -1519,7 +1541,9 @@ local function dissect(tvb, pinfo, tree)
       local du_tree = du_item
 
       du_tree:add(f.lbf, tsdu_tvb(tsdu_offset, 1))
-      du_tree:add(f.ptbf, tsdu_tvb(tsdu_offset, 1))
+      local is_protected = tsdu_tvb(tsdu_offset, 1)
+      ptbf_item = du_tree:add(f.ptbf, is_protected)
+
 
       if mfid > 1 then
         du_tree:add(f.unknown_opcode, tsdu_tvb(tsdu_offset, 1))
@@ -1533,6 +1557,12 @@ local function dissect(tvb, pinfo, tree)
       du_tree:add(f.mfid, tsdu_tvb(tsdu_offset, 1))
       tsdu_offset = tsdu_offset + 1
       du_tree:add(f.args, tsdu_tvb(tsdu_offset, 8))
+      if outbound == 1 then
+        -- TODO:fix
+        local llid = tsdu_tvb(tsdu_offset+2, 2)
+        du_tree:add(f.llid, llid)--:append_text(string.format(" (0x%04x)", tgid))
+      end
+
       tsdu_offset = tsdu_offset + 8
       du_tree:add(f.crc, tsdu_tvb(tsdu_offset, 2))
       tsdu_offset = tsdu_offset + 2
