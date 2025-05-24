@@ -44,15 +44,15 @@ Port number - default is 23456
 
 Here a few display filters that I've found useful for looking for specific traffic.
 
-`p25cai.algid == 0x80` - unencrypted packets
-`p25cai.algid == 0xAA` - traffic encrypted using ADP (ARC4)
-`p25cai.imbe` - packets with IMBE voice
+- `p25cai.algid == 0x80` - unencrypted packets
+- `p25cai.algid == 0xAA` - traffic encrypted using ADP (ARC4)
+- `p25cai.imbe` - packets with IMBE voice
 
-`p25cai.hdu`  - packets of type `Header Data Unit`
-`p25cai.ldu1` - packets of type `Logical Link Data Unit 1`
-`p25cai.ldu2` - packets of type `Logical Link Data Unit 2`
-`p25cai.lcf`  - packets of type `Terminator with Link Control`
-`p25cai.tsbk` - packets of type `Trunking Signaling Data Unit`
+- `p25cai.hdu`  - packets of type `Header Data Unit`
+- `p25cai.ldu1` - packets of type `Logical Link Data Unit 1`
+- `p25cai.ldu2` - packets of type `Logical Link Data Unit 2`
+- `p25cai.lcf`  - packets of type `Terminator with Link Control`
+- `p25cai.tsbk` - packets of type `Trunking Signaling Data Unit`
 
 ## Development
 
@@ -69,16 +69,29 @@ press `Cmd + Shift + L` and Wireshark will reload the lua script immediately.
 The P25 protocol is documented in TIA-102:
 
 TIA-102-AAAD - Block Encryption Protocol
+
 TIA-102-AABB - Trunking Protocol Channel Formats
+
 TIA-102-AABC - Trunking Control Channel Messages
+
 TIA-102-AABF - Link Control Word Formats and Messages
+
 TIA-102-AACE - Link Layer Authentication
+
 TIA-102-BAAA - Common Air Interface (CAI) (FDMA)
+
 TIA-102-BAAC - Common Air Interface Reserved Values
+
 TIA-102-BABA - IMBE Vocoder Description
+
 TIA-102-BABC - Vocoder Reference Test
+
 TIA-102-BAHA - Fixed Station Interface
+
 TIA-102-BBAB - Phase 2 Two-Slot Time Division Multiple Access Physical Layer Protocol Specification
+
 TIA-102-BBAC - Phase 2 Two-Slot TDMA Media Access Control Layer Description
+
 TIA-102-CAAA - Digital C4FM/CQPSK Transceiver Measurement Methods
+
 TIA-102-CAAB - Transceiver Performance Recommendations

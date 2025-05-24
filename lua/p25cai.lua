@@ -156,7 +156,7 @@ manufacturer_ids = {
   [0x00] = "Standard MFID (pre-2001)",
   [0x01] = "Standard MFID (post-2001)",
   [0x09] = "Aselsan Inc.",
-  [0x10] = "Relm / BK Radio",
+  [0x10] = "BK Radio (fka Relm)",
   [0x18] = "Airbus (fka EADS Public Safety Inc.)",
   [0x20] = "Cycomm",
   [0x28] = "Efratom Time and Frequency Products, Inc",
@@ -187,7 +187,7 @@ manufacturer_ids = {
   [0xD0] = "ADI",
   [0xD8] = "Tait Electronics",
   [0xE0] = "Teletec",
-  [0xF0] = "Transcrypt International",
+  [0xF0] = "EF Johnson (fka Transcrypt International)",
   [0xF8] = "Vertex Standard",
   [0xFC] = "Zetron, Inc"
 }
