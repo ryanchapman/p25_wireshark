@@ -122,9 +122,9 @@ dprint2("Wireshark version = ", get_version())
 dprint2("Lua version = ", _VERSION)
 
 local major, minor, micro = get_version():match("(%d+)%.(%d+)%.(%d+)")
-if major and tonumber(major) <= 4 and ((tonumber(minor) <= 4) or (tonumber(minor) == 5 and tonumber(micro) < 0)) then
+if major and tonumber(major) <= 4 and ((tonumber(minor) <= 3) or (tonumber(minor) == 4 and tonumber(micro) < 0)) then
   error(  "Sorry, but your Wireshark/Tshark version ("..get_version()..") is too old for this script!\n"..
-          "This script needs Wireshark/Tshark version 4.5.0 or higher.\n" )
+          "This script needs Wireshark/Tshark version 4.4.0 or higher.\n" )
 end
 
 -- more sanity checking
